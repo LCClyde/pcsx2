@@ -694,7 +694,7 @@ void GSDeviceOGL::CopyRect(GSTexture* st, GSTexture* dt, const GSVector4i& r)
 		gl_CopyImageSubData( sid, GL_TEXTURE_2D,
 				0, r.x, r.y, 0,
 				did, GL_TEXTURE_2D,
-				0, r.x, r.y, 0,
+				0, 0, 0, 0,
 				r.width(), r.height(), 1);
 	} else {
 
