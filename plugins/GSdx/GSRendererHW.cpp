@@ -79,6 +79,16 @@ void GSRendererHW::SetGameCRC(uint32 crc, int options)
 	{
 		m_width = 1280; // TODO: uses a 1280px wide 16 bit render target, but this only fixes half of the problem
 	}
+	// Note check check game above with snow engine fix
+	if (!!theApp.GetConfig("force_1280_width", 0) /*snow engine CRC */)
+	{
+		if(m_nativeres) {
+			m_width = 1280;
+		} else if (m_upscale_multiplier > 1) {
+			m_width  *= 2;
+			m_height *= 2;
+		}
+	}
 }
 
 bool GSRendererHW::CanUpscale()
