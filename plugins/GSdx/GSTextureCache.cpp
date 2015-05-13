@@ -93,6 +93,7 @@ GSTextureCache::Source* GSTextureCache::LookupSource(const GIFRegTEX0& TEX0, con
 	}
 
 	Target* dst = NULL;
+	bool half_right = false;
 
 #ifdef DISABLE_HW_TEXTURE_CACHE
 	if( 0 )
@@ -116,11 +117,20 @@ GSTextureCache::Source* GSTextureCache::LookupSource(const GIFRegTEX0& TEX0, con
 			{
 				Target* t = *i;
 
-				if(t->m_used && t->m_dirty.empty() && GSUtil::HasSharedBits(bp, psm, t->m_TEX0.TBP0, t->m_TEX0.PSM))
-				{
-					dst = t;
+				if(t->m_used && t->m_dirty.empty()) {
+					if (GSUtil::HasSharedBits(bp, psm, t->m_TEX0.TBP0, t->m_TEX0.PSM)) {
+						dst = t;
 
-					break;
+						break;
+
+					} else if ((t->m_TEX0.TBW == 20) && (t->m_TEX0.PSM == 2) && GSUtil::HasSharedBits(bp, psm, t->m_TEX0.TBP0 + 0x140, t->m_TEX0.PSM)) {
+						// try to detect render target bigger than 1024 Texels
+
+						half_right = true;
+						dst = t;
+
+						break;
+					}
 				}
 			}
 		}
@@ -138,7 +148,7 @@ GSTextureCache::Source* GSTextureCache::LookupSource(const GIFRegTEX0& TEX0, con
 			GL_CACHE(format("TC: src miss (%x)", TEX0.TBP0).c_str());
 		}
 #endif
-		src = CreateSource(TEX0, TEXA, dst);
+		src = CreateSource(TEX0, TEXA, dst, half_right);
 
 		if(src == NULL)
 		{
@@ -619,7 +629,7 @@ void GSTextureCache::IncAge()
 }
 
 //Fixme: Several issues in here. Not handling depth stencil, pitch conversion doesnt work.
-GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, Target* dst)
+GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, const GIFRegTEXA& TEXA, Target* dst, bool half_right)
 {
 	const GSLocalMemory::psm_t& psm = GSLocalMemory::m_psm[TEX0.PSM];
 	Source* src = new Source(m_renderer, TEX0, TEXA, m_temp);
@@ -768,13 +778,20 @@ GSTextureCache::Source* GSTextureCache::CreateSource(const GIFRegTEX0& TEX0, con
 
 		if((sr == dr).alltrue())
 		{
-			m_renderer->m_dev->CopyRect(st, dt, GSVector4i(0, 0, w, h));
+			// Note: use dstsize.x instead of w because w is limited to 1024 whereas dstsize.x could
+			// be bigger (1280 for snow engine games)
+			if (half_right)
+				m_renderer->m_dev->CopyRect(st, dt, GSVector4i(dstsize.x/2, 0, dstsize.x, h));
+			else
+				m_renderer->m_dev->CopyRect(st, dt, GSVector4i(0, 0, w, h)); // <= likely wrong dstsize.x could be bigger than w
 		}
 		else
 		{
 			sr.z /= st->GetWidth();
 			sr.w /= st->GetHeight();
-
+			if (half_right) {
+				sr.x = sr.z/2.0f;
+			}
 			m_renderer->m_dev->StretchRect(st, sr, dt, dr);
 		}
 
