@@ -85,8 +85,8 @@ void GSRendererHW::SetGameCRC(uint32 crc, int options)
 		if(m_nativeres) {
 			m_width = 1280;
 		} else if (m_upscale_multiplier > 1) {
-			m_width  *= 2;
-			m_height *= 2;
+			m_width  = 1280 * m_upscale_multiplier;
+			m_height = 1024 * m_upscale_multiplier;
 		}
 	}
 }
@@ -328,6 +328,12 @@ void GSRendererHW::Draw()
 		return;
 	}
 	GL_PUSH(format("HW Draw %d", s_n).c_str());
+
+	static bool print_once = true;
+	if (print_once) {
+		fprintf(stderr, "\n!!!! Size of Destination Target (%dx%d) !!!!\n\n", m_width, m_height);
+		print_once = false;
+	}
 
 	GSDrawingEnvironment& env = m_env;
 	GSDrawingContext* context = m_context;
