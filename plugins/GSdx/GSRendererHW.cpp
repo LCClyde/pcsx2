@@ -43,8 +43,7 @@ void GSRendererHW::SetScaling(){
 
 	if (m_upscale_multiplier < 6 && (m_width / m_upscale_multiplier) != (m_buffer_size * 64)){
 		printf("Frame buffer width on vsync %d m_width %d\n", m_buffer_size, (m_width / m_upscale_multiplier));
-		m_tc->RemoveAll();
-		/*GSRenderer::Reset();*/
+		m_tc->RemovePartial();
 	}
 	else {
 		return;
@@ -63,9 +62,8 @@ void GSRendererHW::SetScaling(){
 		}
 		else if (m_upscale_multiplier > 1)
 		{
-			m_width = m_buffer_size * 64;
-			m_height = m_width * m_upscale_multiplier; // 448 is also common, but this is not always detected right.
-			m_width *= m_upscale_multiplier; // 512 is also common, but this is not always detected right.
+			m_width = (m_buffer_size * 64) * m_upscale_multiplier;
+			m_height = m_width; //Keep it square
 			
 		}
 	}
@@ -76,8 +74,10 @@ void GSRendererHW::SetScaling(){
 
 	if (m_upscale_multiplier == 1) {
 		// No upscaling hack at native resolution
-		if (m_nativeres) 
-			m_width = m_buffer_size * 64;
+		if (m_nativeres) {
+			m_width = (m_buffer_size * 64) * m_upscale_multiplier;
+			m_height = m_width; //Keep it square
+		}
 
 		m_userhacks_round_sprite_offset = 0;
 		m_userhacks_align_sprite_X = 0;
@@ -95,12 +95,6 @@ void GSRendererHW::SetGameCRC(uint32 crc, int options)
 	GSRenderer::SetGameCRC(crc, options);
 
 	m_hacks.SetGameCRC(m_game);
-
-	//Not needed anymore??
-	/*if(m_game.title == CRC::JackieChanAdv)
-	{
-		m_width = 1280; // TODO: uses a 1280px wide 16 bit render target, but this only fixes half of the problem
-	}*/
 }
 
 bool GSRendererHW::CanUpscale()
@@ -343,12 +337,6 @@ void GSRendererHW::Draw()
 		return;
 	}
 	GL_PUSH(format("HW Draw %d", s_n).c_str());
-
-	static bool print_once = true;
-	if (print_once) {
-		fprintf(stderr, "\n!!!! Size of Destination Target (%dx%d) !!!!\n\n", m_width, m_height);
-		print_once = false;
-	}
 
 	GSDrawingEnvironment& env = m_env;
 	GSDrawingContext* context = m_context;
